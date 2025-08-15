@@ -332,6 +332,14 @@ struct Node{
     9: OpenAPI      open_api   , // All inputs and outputs
 }
 
+struct Edge {
+    1: string source_node_id (go.tag= "json:\"source_node_id\"") // 源节点ID
+    2: string target_node_id (go.tag= "json:\"target_node_id\"") // 目标节点ID
+    3: string source_output (go.tag= "json:\"source_output\"") // 源节点输出
+    4: string target_input (go.tag= "json:\"target_input\"") // 目标节点输入
+    5: optional string id (go.tag= "json:\"id\"") // 边的唯一标识
+}
+
 enum SupportBatch{
     NOT_SUPPORT = 1, // 1: Not supported
     SUPPORT     = 2, // 2: Support
@@ -2188,6 +2196,94 @@ struct OpenAPIGetWorkflowInfoResponse{
     1  : optional i32                 Code     (api.body = "code") //  API adaptation
     2  : optional string              Msg      (api.body = "msg")
 	3  : optional WorkflowInfo WorkflowInfo (api.body = "data")
+
+    255: required base.BaseResp BaseResp
+}
+
+// Export workflow related structures
+struct ExportWorkflowRequest {
+    1: i64 WorkflowID (go.tag= "json:\"workflow_id\"") // 工作流ID
+    2: optional string Version (go.tag= "json:\"version\"") // 版本号，不传则导出草稿
+    3: optional bool IncludeDependencies (go.tag= "json:\"include_dependencies\"") // 是否包含依赖资源
+    4: optional string ExportFormat (go.tag= "json:\"export_format\"") // 导出格式，默认json
+
+    255: optional base.Base Base
+}
+
+struct WorkflowExportMeta {
+    1: i64 ID (go.tag= "json:\"id\"") // 工作流ID
+    2: string Name (go.tag= "json:\"name\"") // 工作流名称
+    3: string Description (go.tag= "json:\"description\"") // 工作流描述
+    4: string IconURI (go.tag= "json:\"icon_uri\"") // 图标URI
+    5: i64 CreatorID (go.tag= "json:\"creator_id\"") // 创建者ID
+    6: i64 SpaceID (go.tag= "json:\"space_id\"") // 空间ID
+    7: string CreatedAt (go.tag= "json:\"created_at\"") // 创建时间
+    8: string UpdatedAt (go.tag= "json:\"updated_at\"") // 更新时间
+    9: optional string Version (go.tag= "json:\"version\"") // 版本号
+}
+
+struct WorkflowExportCanvas {
+    1: list<Node> Nodes (go.tag= "json:\"nodes\"") // 节点列表
+    2: list<Edge> Edges (go.tag= "json:\"edges\"") // 边列表
+    3: optional string InputParams (go.tag= "json:\"input_params\"") // 输入参数
+    4: optional string OutputParams (go.tag= "json:\"output_params\"") // 输出参数
+}
+
+struct PluginDependency {
+    1: i64 ID (go.tag= "json:\"id\"") // 插件ID
+    2: string Name (go.tag= "json:\"name\"") // 插件名称
+    3: string Version (go.tag= "json:\"version\"") // 插件版本
+    4: string ServerURL (go.tag= "json:\"server_url\"") // 服务器URL
+    5: i32 PluginType (go.tag= "json:\"plugin_type\"") // 插件类型
+    6: optional string Manifest (go.tag= "json:\"manifest\"") // 插件清单
+    7: optional string OpenAPIDoc (go.tag= "json:\"openapi_doc\"") // OpenAPI文档
+}
+
+struct KnowledgeDependency {
+    1: i64 ID (go.tag= "json:\"id\"") // 知识库ID
+    2: string Name (go.tag= "json:\"name\"") // 知识库名称
+    3: string Description (go.tag= "json:\"description\"") // 知识库描述
+    4: i32 FormatType (go.tag= "json:\"format_type\"") // 格式类型
+    5: string IconURI (go.tag= "json:\"icon_uri\"") // 图标URI
+}
+
+struct DatabaseDependency {
+    1: i64 ID (go.tag= "json:\"id\"") // 数据库ID
+    2: string TableName (go.tag= "json:\"table_name\"") // 表名
+    3: string TableDesc (go.tag= "json:\"table_desc\"") // 表描述
+    4: string TableField (go.tag= "json:\"table_field\"") // 表字段信息
+    5: string IconURI (go.tag= "json:\"icon_uri\"") // 图标URI
+    6: string PhysicalTableName (go.tag= "json:\"physical_table_name\"") // 物理表名
+    7: i64 RWMode (go.tag= "json:\"rw_mode\"") // 读写模式
+}
+
+struct SubWorkflowDependency {
+    1: i64 ID (go.tag= "json:\"id\"") // 工作流ID
+    2: string Name (go.tag= "json:\"name\"") // 工作流名称
+    3: string Description (go.tag= "json:\"description\"") // 工作流描述
+    4: string Version (go.tag= "json:\"version\"") // 版本号
+    5: string IconURI (go.tag= "json:\"icon_uri\"") // 图标URI
+}
+
+struct WorkflowDependencies {
+    1: optional list<PluginDependency> Plugins (go.tag= "json:\"plugins\"") // 插件依赖
+    2: optional list<KnowledgeDependency> KnowledgeBases (go.tag= "json:\"knowledge_bases\"") // 知识库依赖
+    3: optional list<DatabaseDependency> Databases (go.tag= "json:\"databases\"") // 数据库依赖
+    4: optional list<SubWorkflowDependency> SubWorkflows (go.tag= "json:\"sub_workflows\"") // 子工作流依赖
+}
+
+struct WorkflowExport {
+    1: string ExportVersion (go.tag= "json:\"export_version\"") // 导出版本
+    2: string ExportTime (go.tag= "json:\"export_time\"") // 导出时间
+    3: WorkflowExportMeta Meta (go.tag= "json:\"meta\"") // 工作流元数据
+    4: WorkflowExportCanvas Canvas (go.tag= "json:\"canvas\"") // 工作流画布
+    5: optional WorkflowDependencies Dependencies (go.tag= "json:\"dependencies\"") // 依赖资源
+}
+
+struct ExportWorkflowResponse {
+    1: i64 Code (go.tag= "json:\"code\"")
+    2: string Msg (go.tag= "json:\"msg\"")
+    3: optional WorkflowExport Data (go.tag= "json:\"data\"")
 
     255: required base.BaseResp BaseResp
 }
