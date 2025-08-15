@@ -3637,3 +3637,147 @@ func checkUserSpace(ctx context.Context, uid int64, spaceID int64) error {
 
 	return nil
 }
+
+// ExportWorkflow 导出工作流
+func (w *ApplicationService) ExportWorkflow(ctx context.Context, req *workflow.ExportWorkflowRequest) (
+	_ *workflow.ExportWorkflowResponse, err error,
+) {
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			err = safego.NewPanicErr(panicErr, debug.Stack())
+		}
+
+		if err != nil {
+			err = vo.WrapIfNeeded(errno.ErrWorkflowOperationFail, err, errorx.KV("cause", vo.UnwrapRootErr(err).Error()))
+		}
+	}()
+
+	// 获取用户ID
+	userID := ctxutil.GetUserID(ctx)
+	if userID == 0 {
+		return nil, errorx.New(errno.ErrUnauthorized, "用户未登录")
+	}
+
+	// 构建获取策略
+	getPolicy := &vo.GetPolicy{
+		ID:       req.WorkflowID,
+		UserID:   userID,
+		Version:  req.Version,
+		IsDraft:  req.Version == "",
+	}
+
+	// 获取工作流信息
+	workflowEntity, err := w.DomainSVC.Get(ctx, getPolicy)
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建导出数据
+	exportData := &workflow.WorkflowExport{
+		ExportVersion: "1.0",
+		ExportTime:    time.Now().Format(time.RFC3339),
+		Meta: &workflow.WorkflowExportMeta{
+			ID:          workflowEntity.ID,
+			Name:        workflowEntity.Name,
+			Description: workflowEntity.Desc,
+			IconURI:     workflowEntity.IconURI,
+			CreatorID:   workflowEntity.CreatorID,
+			SpaceID:     workflowEntity.SpaceID,
+			CreatedAt:   workflowEntity.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   workflowEntity.UpdatedAt.Format(time.RFC3339),
+			Version:     workflowEntity.GetVersion(),
+		},
+		Canvas: &workflow.WorkflowExportCanvas{
+			Nodes:        workflowEntity.CanvasInfo.Canvas.Nodes,
+			Edges:        workflowEntity.CanvasInfo.Canvas.Edges,
+			InputParams:  workflowEntity.CanvasInfo.InputParams,
+			OutputParams: workflowEntity.CanvasInfo.OutputParams,
+		},
+	}
+
+	// 如果需要包含依赖资源
+	if req.IncludeDependencies {
+		dependencies, err := w.collectWorkflowDependencies(ctx, workflowEntity)
+		if err != nil {
+			logs.Warnf("收集工作流依赖失败: %v", err)
+			// 不返回错误，继续导出
+		} else {
+			exportData.Dependencies = dependencies
+		}
+	}
+
+	return &workflow.ExportWorkflowResponse{
+		Code: 200,
+		Msg:  "导出成功",
+		Data: &workflow.WorkflowExportData{
+			WorkflowExport: exportData,
+		},
+	}, nil
+}
+
+// collectWorkflowDependencies 收集工作流依赖资源
+func (w *ApplicationService) collectWorkflowDependencies(ctx context.Context, workflowEntity *entity.Workflow) (*workflow.WorkflowDependencies, error) {
+	dependencies := &workflow.WorkflowDependencies{}
+
+	// 收集插件依赖
+	plugins, err := w.collectPluginDependencies(ctx, workflowEntity)
+	if err != nil {
+		logs.Warnf("收集插件依赖失败: %v", err)
+	} else {
+		dependencies.Plugins = plugins
+	}
+
+	// 收集知识库依赖
+	knowledgeBases, err := w.collectKnowledgeDependencies(ctx, workflowEntity)
+	if err != nil {
+		logs.Warnf("收集知识库依赖失败: %v", err)
+	} else {
+		dependencies.KnowledgeBases = knowledgeBases
+	}
+
+	// 收集数据库依赖
+	databases, err := w.collectDatabaseDependencies(ctx, workflowEntity)
+	if err != nil {
+		logs.Warnf("收集数据库依赖失败: %v", err)
+	} else {
+		dependencies.Databases = databases
+	}
+
+	// 收集子工作流依赖
+	subWorkflows, err := w.collectSubWorkflowDependencies(ctx, workflowEntity)
+	if err != nil {
+		logs.Warnf("收集子工作流依赖失败: %v", err)
+	} else {
+		dependencies.SubWorkflows = subWorkflows
+	}
+
+	return dependencies, nil
+}
+
+// collectPluginDependencies 收集插件依赖
+func (w *ApplicationService) collectPluginDependencies(ctx context.Context, workflowEntity *entity.Workflow) ([]*workflow.PluginDependency, error) {
+	// 这里需要根据工作流中的节点配置来收集插件依赖
+	// 暂时返回空列表，后续根据具体需求实现
+	return []*workflow.PluginDependency{}, nil
+}
+
+// collectKnowledgeDependencies 收集知识库依赖
+func (w *ApplicationService) collectKnowledgeDependencies(ctx context.Context, workflowEntity *entity.Workflow) ([]*workflow.KnowledgeDependency, error) {
+	// 这里需要根据工作流中的节点配置来收集知识库依赖
+	// 暂时返回空列表，后续根据具体需求实现
+	return []*workflow.KnowledgeDependency{}, nil
+}
+
+// collectDatabaseDependencies 收集数据库依赖
+func (w *ApplicationService) collectDatabaseDependencies(ctx context.Context, workflowEntity *entity.Workflow) ([]*workflow.DatabaseDependency, error) {
+	// 这里需要根据工作流中的节点配置来收集数据库依赖
+	// 暂时返回空列表，后续根据具体需求实现
+	return []*workflow.DatabaseDependency{}, nil
+}
+
+// collectSubWorkflowDependencies 收集子工作流依赖
+func (w *ApplicationService) collectSubWorkflowDependencies(ctx context.Context, workflowEntity *entity.Workflow) ([]*workflow.SubWorkflowDependency, error) {
+	// 这里需要根据工作流中的节点配置来收集子工作流依赖
+	// 暂时返回空列表，后续根据具体需求实现
+	return []*workflow.SubWorkflowDependency{}, nil
+}
